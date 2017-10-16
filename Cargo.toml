@@ -1,0 +1,7 @@
+[package]
+authors = ["Mark Simulacrum <mark.simulacrum@gmail.com>"]
+name = "release-triage"
+version = "0.1.0"
+[dependencies]
+"crates.io" = "*"
+serde = "*"
