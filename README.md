@@ -25,5 +25,5 @@ dependents on petgraph 0.4.7: 564
 dependents on petgraph 0.4.8: 564
 dependents on petgraph 0.4.9: 564
 dependents on petgraph 0.4.10: 564
-total broken: 4023 (6.02%)
+total broken: 564 (0.84%)
 ```

@@ -69,7 +69,7 @@ fn main() {
     }
     roots.sort();
 
-    let mut total_broken = 0;
+    let mut total_broken = HashSet::new();
     for root in roots {
         let root_node = nodes[&*root];
         let mut processed = HashSet::new();
@@ -86,12 +86,11 @@ fn main() {
         }
 
         processed.remove(&root_node);
+        total_broken.extend(processed.clone());
 
         let mut dependents = processed.into_iter().map(|p| &graph[p]).collect::<Vec<_>>();
         dependents.sort();
         let dependents = dependents.into_iter().map(|p| p.to_string()).collect::<Vec<_>>();
-
-        total_broken += dependents.len();
 
         if dependents.len() < 20 {
             println!("dependents on {}: {}: {:#?}", root, dependents.len(), dependents);
@@ -101,8 +100,8 @@ fn main() {
     }
 
     println!("total broken: {} ({:.2}%)",
-        total_broken,
-        ((total_broken as f64) / (graph.raw_nodes().len() as f64)) * 100.0);
+        total_broken.len(),
+        ((total_broken.len() as f64) / (graph.raw_nodes().len() as f64)) * 100.0);
 }
 
 #[derive(Debug, PartialEq, Deserialize)]
