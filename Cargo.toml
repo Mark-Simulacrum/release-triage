@@ -1,12 +1,14 @@
 [package]
 authors = ["Mark Simulacrum <mark.simulacrum@gmail.com>"]
 name = "release-triage"
+license = "MIT/Apache-2.0"
 version = "0.1.0"
+
 [dependencies]
-petgraph = "*"
-serde = "*"
-serde_derive = "*"
-serde_json = "*"
+petgraph = "0.4.10"
+serde = "1"
+serde_derive = "1"
+serde_json = "1"
 
 [dependencies.semver]
 features = ["serde"]
