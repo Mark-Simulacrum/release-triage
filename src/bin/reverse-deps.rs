@@ -34,13 +34,14 @@ fn main() {
 
     let map = get_all_crates();
 
-    let count = map.values().map(|v| v.len()).sum::<usize>();
+    let version_count = map.values().map(|v| v.len()).sum::<usize>();
+    let crate_count = map.len();
 
     println!("loaded {} unique crates and {} versions",
-        map.len(), count);
+        crate_count, version_count);
 
-    let mut nodes = HashMap::<CrateId, _>::with_capacity(count);
-    let mut graph: Graph<CrateId, ()> = Graph::with_capacity(count, count);
+    let mut nodes = HashMap::<CrateId, _>::with_capacity(version_count);
+    let mut graph: Graph<CrateId, ()> = Graph::with_capacity(version_count, version_count);
 
     for krate in map.values().flat_map(|v| v) {
         let krate_node = *nodes.entry(krate.id())
@@ -65,11 +66,20 @@ fn main() {
 
     let mut roots = Vec::new();
     for arg in env::args().skip(1) {
-        roots.extend(nodes.keys().filter(|k| k.to_string().starts_with(&arg)));
+        let space = arg.find(" ").unwrap_or(arg.len());
+        let name = &arg[..space];
+        let version = &arg[space..].trim();
+        let version = VersionReq::parse(version).unwrap_or_else(|e| {
+            panic!("{}: failed to parse version req {}: {:?}", name, version, e);
+        });
+        roots.extend(nodes.keys().filter(|k| {
+            k.name == name && version.matches(&k.version)
+        }));
     }
     roots.sort();
 
     let mut total_broken = HashSet::new();
+    let mut total_crates = HashSet::new();
     for root in roots {
         let root_node = nodes[&*root];
         let mut processed = HashSet::new();
@@ -85,23 +95,31 @@ fn main() {
             }
         }
 
-        processed.remove(&root_node);
         total_broken.extend(processed.clone());
+
+        let crate_names = processed.iter().map(|p| graph[*p].name.clone()).collect::<HashSet<_>>();
 
         let mut dependents = processed.into_iter().map(|p| &graph[p]).collect::<Vec<_>>();
         dependents.sort();
         let dependents = dependents.into_iter().map(|p| p.to_string()).collect::<Vec<_>>();
 
-        if dependents.len() < 20 {
-            println!("dependents on {}: {}: {:#?}", root, dependents.len(), dependents);
+        if dependents.len() < 20 && env::var_os("QUIET").is_none() {
+            println!("dependents on {}: {} crates, {} versions: {:#?}",
+                root, crate_names.len(), dependents.len(), dependents);
         } else {
-            println!("dependents on {}: {}", root, dependents.len());
+            println!("dependents on {}: {} crates, {} versions",
+                root, crate_names.len(), dependents.len());
         }
+
+        total_crates.extend(crate_names);
     }
 
-    println!("total broken: {} ({:.2}%)",
+    println!("total versions broken: {} ({:.2}%)",
         total_broken.len(),
         ((total_broken.len() as f64) / (graph.raw_nodes().len() as f64)) * 100.0);
+    println!("total crates broken: {} ({:.2}%)",
+        total_crates.len(),
+        ((total_crates.len() as f64) / (crate_count as f64)) * 100.0);
 }
 
 #[derive(Debug, PartialEq, Deserialize)]
