@@ -93,14 +93,16 @@ fn main() {
 
         total_broken += dependents.len();
 
-        println!("dependents on {}: {}: {:#?}", root, dependents.len(), if dependents.len() < 20 {
-            dependents
-        } else { vec![] });
+        if dependents.len() < 20 {
+            println!("dependents on {}: {}: {:#?}", root, dependents.len(), dependents);
+        } else {
+            println!("dependents on {}: {}", root, dependents.len());
+        }
     }
 
-    println!("total broken: {} ({:.3}%)",
+    println!("total broken: {} ({:.2}%)",
         total_broken,
-        (total_broken / graph.raw_nodes().len()) * 100);
+        ((total_broken as f64) / (graph.raw_nodes().len() as f64)) * 100.0);
 }
 
 #[derive(Debug, PartialEq, Deserialize)]
