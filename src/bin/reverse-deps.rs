@@ -1,20 +1,19 @@
 extern crate semver;
-#[macro_use]
-extern crate serde_derive;
 extern crate serde_json;
 extern crate serde;
 extern crate petgraph;
+extern crate release_triage;
 
 use std::process::Command;
 use std::path::Path;
 use std::fs::{self, DirEntry, File};
 use std::io::{self, Read};
 use std::collections::{HashMap, HashSet};
-use std::cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use std::env;
-use std::fmt;
 
-use semver::{Version, VersionReq};
+use release_triage::crates::{Crate, CrateId};
+
+use semver::VersionReq;
 use petgraph::{Graph, Direction};
 use petgraph::visit::EdgeRef;
 
@@ -82,35 +81,37 @@ fn main() {
     let mut total_crates = HashSet::new();
     for root in roots {
         let root_node = nodes[&*root];
-        let mut processed = HashSet::new();
+        let mut versions = HashSet::new();
+        let mut crate_names = HashSet::new();
         let mut to_process = vec![root_node];
         while let Some(node) = to_process.pop() {
-            processed.insert(node);
+            let crate_id = &graph[node];
+            versions.insert(node);
+            crate_names.insert(&crate_id.name);
             // What will break if this node breaks: the incoming edges are from
             // crates that depend on us.
             for edge in graph.edges_directed(node, Direction::Incoming) {
-                if !processed.contains(&edge.source()) {
+                if !versions.contains(&edge.source()) {
                     to_process.push(edge.source());
                 }
             }
         }
 
-        total_broken.extend(processed.clone());
+        {
+            let mut dependents = versions.iter().collect::<Vec<_>>();
+            dependents.sort();
+            let dependents = dependents.into_iter().map(|p| graph[*p].to_string()).collect::<Vec<_>>();
 
-        let crate_names = processed.iter().map(|p| graph[*p].name.clone()).collect::<HashSet<_>>();
-
-        let mut dependents = processed.into_iter().map(|p| &graph[p]).collect::<Vec<_>>();
-        dependents.sort();
-        let dependents = dependents.into_iter().map(|p| p.to_string()).collect::<Vec<_>>();
-
-        if dependents.len() < 20 && env::var_os("QUIET").is_none() {
-            println!("dependents on {}: {} crates, {} versions: {:#?}",
-                root, crate_names.len(), dependents.len(), dependents);
-        } else {
-            println!("dependents on {}: {} crates, {} versions",
-                root, crate_names.len(), dependents.len());
+            if dependents.len() < 20 && env::var_os("QUIET").is_none() {
+                println!("dependents on {}: {} crates, {} versions: {:#?}",
+                    root, crate_names.len(), dependents.len(), dependents);
+            } else {
+                println!("dependents on {}: {} crates, {} versions",
+                    root, crate_names.len(), dependents.len());
+            }
         }
 
+        total_broken.extend(versions);
         total_crates.extend(crate_names);
     }
 
@@ -121,76 +122,6 @@ fn main() {
         total_crates.len(),
         ((total_crates.len() as f64) / (crate_count as f64)) * 100.0);
 }
-
-#[derive(Debug, PartialEq, Deserialize)]
-struct Dependency {
-    name: String,
-    req: VersionReq,
-}
-
-#[derive(Debug, Hash, PartialEq, PartialOrd, Ord, Eq)]
-struct CrateId {
-    name: String,
-    version: Version
-}
-
-#[derive(Deserialize, Debug)]
-struct Crate {
-    name: String,
-    #[serde(rename="vers")]
-    version: Version,
-    #[serde(rename="deps")]
-    dependencies: Vec<Dependency>,
-}
-
-impl Crate {
-    fn id(&self) -> CrateId {
-        CrateId {
-            name: self.name.clone(),
-            version: self.version.clone(),
-        }
-    }
-}
-
-impl fmt::Display for CrateId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {}.{}.{}",
-            self.name, self.version.major, self.version.minor, self.version.patch)?;
-        if !self.version.pre.is_empty() {
-            write!(f, "-")?;
-        }
-        for pre in &self.version.pre {
-            write!(f, "{}", pre)?;
-        }
-        if !self.version.build.is_empty() {
-            write!(f, "+")?;
-        }
-        for build in &self.version.build {
-            write!(f, "{}", build)?;
-        }
-        Ok(())
-    }
-}
-
-impl PartialOrd for Crate {
-    fn partial_cmp(&self, other: &Crate) -> Option<Ordering> {
-        Some(self.name.cmp(&other.name).then_with(|| self.version.cmp(&other.version)))
-    }
-}
-
-impl Ord for Crate {
-    fn cmp(&self, other: &Crate) -> Ordering {
-        self.partial_cmp(other).unwrap()
-    }
-}
-
-impl PartialEq for Crate {
-    fn eq(&self, other: &Crate) -> bool {
-        self.name == other.name && self.version == other.version
-    }
-}
-
-impl Eq for Crate {}
 
 // crate => crates which depend on the key
 fn get_all_crates() -> HashMap<String, Vec<Crate>> {

@@ -1,7 +1,10 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
+extern crate semver;
+extern crate petgraph;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
+
+mod version;
+pub mod crates;
+
+pub use version::Version;
