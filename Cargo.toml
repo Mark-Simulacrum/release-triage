@@ -10,16 +10,14 @@ serde = "1"
 serde_derive = "1"
 serde_json = "1"
 csv = "1.0.0-beta.5"
-env_logger = "0.4.3"
-error-chain = "0.10.0"
+env_logger = "0.5"
+error-chain = "0.11.0"
 futures = "0.1.14"
-log = "0.3.7"
+log = "0.4"
 tokio-core = "0.1.8"
 hyper = "0.11.0"
-dotenv = "0.10"
-
-[dependencies.hyper-tls]
-git = "https://github.com/hyperium/hyper-tls"
+dotenv = "0.11"
+hyper-tls = "0.1.2"
 
 [dependencies.semver]
 features = ["serde"]

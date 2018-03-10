@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# By nikomatsakis: https://gist.github.com/nikomatsakis/75e09ed314bea715e192ce226127d3c6
+
+if [[ "$1" == "" || "$2" == "" ]]; then
+    echo "Usage: $0 <crate> <version>"
+    echo ""
+    echo "e.g. $0 conrod 0.32.0"
+    exit 1
+fi
+
+curl -L https://crates.io/api/v1/crates/$1/$2/download | tar zxf -
