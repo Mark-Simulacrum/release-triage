@@ -6,6 +6,12 @@ use std::cmp::{PartialEq, PartialOrd, Ord, Eq, Ordering};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Version(semver::Version);
 
+impl Version {
+    pub fn new(v: semver::Version) -> Self {
+        Version(v)
+    }
+}
+
 impl Deref for Version {
     type Target = semver::Version;
     fn deref(&self) -> &Self::Target {

@@ -10,8 +10,10 @@ use std::fs::{self, DirEntry, File};
 use std::io::{self, Read};
 use std::collections::{HashMap, HashSet};
 use std::env;
+use std::cmp;
 
 use release_triage::crates::{Crate, CrateId};
+use release_triage::Version;
 
 use semver::VersionReq;
 use petgraph::{Graph, Direction};
@@ -42,7 +44,14 @@ fn main() {
     let mut nodes = HashMap::<CrateId, _>::with_capacity(version_count);
     let mut graph: Graph<CrateId, ()> = Graph::with_capacity(version_count, version_count);
 
+    let mut latest_release: HashMap<String, Version> = HashMap::new();
+
     for krate in map.values().flat_map(|v| v) {
+        {
+            let entry = latest_release.entry(krate.id().name)
+                .or_insert_with(|| krate.id().version);
+            *entry = cmp::max(entry.clone(), krate.id().version);
+        }
         let krate_node = *nodes.entry(krate.id())
             .or_insert_with(|| graph.add_node(krate.id()));
         for dependency in &krate.dependencies {
@@ -100,7 +109,11 @@ fn main() {
         {
             let mut dependents = versions.iter().collect::<Vec<_>>();
             dependents.sort();
-            let dependents = dependents.into_iter().map(|p| graph[*p].to_string()).collect::<Vec<_>>();
+            let dependents = dependents.into_iter()
+                .map(|p| &graph[*p])
+                .filter(|p| p.version == latest_release[&p.name])
+                .map(|p| p.to_string())
+                .collect::<Vec<_>>();
 
             if dependents.len() < 20 && env::var_os("QUIET").is_none() {
                 println!("dependents on {}: {} crates, {} versions: {:#?}",
