@@ -24,6 +24,10 @@ impl<'a> CrateId<'a> {
             name: Cow::from(Cow::into_owned(self.name)),
         }
     }
+
+    pub fn matches(&self, dep: &Dependency) -> bool {
+        dep.name == self.name && dep.req.matches(&self.version)
+    }
 }
 
 #[derive(Deserialize, Debug)]
